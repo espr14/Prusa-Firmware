@@ -488,15 +488,23 @@ void xyzcal_scan_pixels_32x32_Zhop(int16_t cx, int16_t cy, int16_t min_z, int16_
 	/// available restarts (if needed)
 	uint8_t restarts = 2;
 
-	do {
-		for (uint8_t r = 0; r < 32; r++){ ///< Y axis
-			xyzcal_lineXYZ_to(_X, cy - 1024 + r * 64, z, delay_us, 0);
-			for (int8_t d = 0; d < 2; ++d){ ///< direction			
+	for (uint16_t i = 0; i < 32 * 32;++i){
+		pixels[i] = 0;
+	}
+
+	do
+	{
+		for (uint8_t r = 0; r < 16; r++)
+		{ ///< Y axis
+			xyzcal_lineXYZ_to(_X, cy - 1024 + 2 * r * 64, z, delay_us, 0);
+			for (int8_t d = 0; d < 2; ++d)
+			{ ///< direction
 				xyzcal_lineXYZ_to((d & 1) ? (cx + 1024) : (cx - 1024), _Y, min_z, delay_us, 0);
 
 				z = _Z;
 				sm4_set_dir(X_AXIS, d);
-				for (uint8_t c = 0; c < 32; c++){ ///< X axis
+				for (uint8_t c = 0; c < 16; c++)
+				{ ///< X axis
 
 					z_trig = min_z;
 
@@ -504,22 +512,27 @@ void xyzcal_scan_pixels_32x32_Zhop(int16_t cx, int16_t cy, int16_t min_z, int16_
 					sm4_set_dir(Z_AXIS, Z_PLUS);
 					/// speed up from stop, go half the way
 					current_delay_us = MAX_DELAY;
-					for (start_z = z; z < (max_z + start_z) / 2; ++z){
-						if (!_PINDA){
+					for (start_z = z; z < (max_z + start_z) / 2; ++z)
+					{
+						if (!_PINDA)
+						{
 							break;
 						}
 						accelerate(Z_AXIS_MASK, Z_ACCEL, current_delay_us, Z_MIN_DELAY);
 					}
 
-					if(_PINDA){
+					if (_PINDA)
+					{
 						uint16_t steps_to_go = MAX(0, max_z - z);
-						while (_PINDA && z < max_z){
+						while (_PINDA && z < max_z)
+						{
 							go_and_stop(Z_AXIS_MASK, Z_ACCEL, current_delay_us, steps_to_go);
 							++z;
 						}
 					}
 					/// slow down to stop
-					while (current_delay_us < MAX_DELAY){
+					while (current_delay_us < MAX_DELAY)
+					{
 						accelerate(Z_AXIS_MASK, -Z_ACCEL, current_delay_us, Z_MIN_DELAY);
 						++z;
 					}
@@ -528,42 +541,51 @@ void xyzcal_scan_pixels_32x32_Zhop(int16_t cx, int16_t cy, int16_t min_z, int16_
 					sm4_set_dir(Z_AXIS, Z_MINUS);
 					/// speed up
 					current_delay_us = MAX_DELAY;
-					for (start_z = z; z > (min_z + start_z) / 2; --z){
-						if (_PINDA){
+					for (start_z = z; z > (min_z + start_z) / 2; --z)
+					{
+						if (_PINDA)
+						{
 							z_trig = z;
 							break;
 						}
 						accelerate(Z_AXIS_MASK, Z_ACCEL, current_delay_us, Z_MIN_DELAY);
 					}
 					/// slow down
-					if(!_PINDA){
+					if (!_PINDA)
+					{
 						steps_to_go = MAX(0, z - min_z);
-						while (!_PINDA && z > min_z){
+						while (!_PINDA && z > min_z)
+						{
 							go_and_stop(Z_AXIS_MASK, Z_ACCEL, current_delay_us, steps_to_go);
 							--z;
 						}
 						z_trig = z;
 					}
 					/// slow down to stop
-					while (z > min_z && current_delay_us < MAX_DELAY){
+					while (z > min_z && current_delay_us < MAX_DELAY)
+					{
 						accelerate(Z_AXIS_MASK, -Z_ACCEL, current_delay_us, Z_MIN_DELAY);
 						--z;
 					}
 
 					count_position[2] = z;
-					if (d == 0){
+					if (d == 0)
+					{
 						line_buffer[c] = (uint16_t)(z_trig - min_z);
-					} else {
+					}
+					else
+					{
 						/// data reversed in X
 						// DBG(_n("%04x"), (line_buffer[31 - c] + (z - min_z)) / 2);
 						/// save average of both directions
-						pixels[(uint16_t)r * 32 + (31 - c)] = (uint8_t)MIN((uint32_t)255, ((uint32_t)line_buffer[31 - c] + (z_trig - min_z)) / 2);
+						// pixels[(uint16_t)r * 32 + (31 - c)] = (uint8_t)MIN((uint32_t)255, ((uint32_t)line_buffer[31 - c] + (z_trig - min_z)) / 2);
+						pixels[(uint16_t)r * 32 + (15 - c)] = (uint8_t)MIN((uint32_t)255, ((uint32_t)line_buffer[15 - c] + (z_trig - min_z)) / 2);
 					}
 
 					/// move to the next point and move Z up diagonally (if needed)
 					current_delay_us = MAX_DELAY;
 					// const int8_t dir = (d & 1) ? -1 : 1;
-					const int16_t end_x = ((d & 1) ? 1 : -1) * (64 * (16 - c) - 32) + cx;
+					const int16_t end_x = ((d & 1) ? 1 : -1) * (64 * (16 - 2 * c) - 32) + cx;
 					const int16_t length_x = ABS(end_x - _X);
 					const int16_t half_x = length_x / 2;
 					int16_t x = 0;
@@ -573,14 +595,16 @@ void xyzcal_scan_pixels_32x32_Zhop(int16_t cx, int16_t cy, int16_t min_z, int16_
 
 					sm4_set_dir(Z_AXIS, Z_PLUS);
 					/// speed up
-					for (x = 0; x <= half_x; ++x){
+					for (x = 0; x <= half_x; ++x)
+					{
 						accelerate(axis, Z_ACCEL, current_delay_us, Z_MIN_DELAY);
 						if (up)
 							++z;
 					}
 					/// slow down
 					steps_to_go = length_x - x;
-					for (; x < length_x; ++x){
+					for (; x < length_x; ++x)
+					{
 						go_and_stop(axis, Z_ACCEL, current_delay_us, steps_to_go);
 						if (up)
 							++z;
@@ -589,8 +613,9 @@ void xyzcal_scan_pixels_32x32_Zhop(int16_t cx, int16_t cy, int16_t min_z, int16_
 					count_position[2] = z;
 				}
 			}
-			/// do the min_z addjusting in the first row only
-			if (r == 0 && restarts){
+			/// do the min_z adjusting in the first row only
+			if (r == 0 && restarts)
+			{
 				if (more_zeros(pixels, min_z))
 					restarts = 0;
 			}
